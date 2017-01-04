@@ -10,7 +10,7 @@
 using namespace std;
 
 namespace svg {
-	ostream& operator <<(ostream& os, function<void(ostream& os)> f) {
+	inline ostream& operator <<(ostream& os, function<void(ostream& os)> f) {
 		f(os);
 		return os;
 	}
@@ -27,7 +27,7 @@ namespace svg {
 		RGBAvalue(unsigned int V) : v(V) {}
 		RGBAvalue(rgba_colors c) : v((unsigned int)c) {}
 	};
-	ostream& operator <<(ostream& os, RGBAvalue v) {
+	inline ostream& operator <<(ostream& os, RGBAvalue v) {
 		os << "#" << setfill('0') << setw(8) << hex << v.v << dec;
 		return os;
 	}

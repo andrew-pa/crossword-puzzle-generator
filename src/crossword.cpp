@@ -1,97 +1,6 @@
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <vector>
-#include <list>
-#include <stack>
-#include <algorithm>
-#include <memory>
-#include <random>
-#include <cctype>
-#include <locale>
-#include <iomanip>
-using namespace std;
+#include "crossword.h"
 
-#include "svg.h"
-
-// trim from start
-inline std::string &ltrim(std::string &s) {
-	s.erase(s.begin(), std::find_if(s.begin(), s.end(),
-	std::not1(std::ptr_fun<int, int>(std::isspace))));
-	return s;
-}
-
-// trim from end
-inline std::string &rtrim(std::string &s) {
-	s.erase(std::find_if(s.rbegin(), s.rend(),
-	std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
-	return s;
-}
-
-// trim from both ends
-inline std::string &trim(std::string &s) {
-	return ltrim(rtrim(s));
-}
-
-enum class direction { across, down };
-struct ivec2 {
-	int x, y;
-ivec2(int x = 0, int y = 0)
-		: x(x), y(y) {}
-	inline ivec2 operator +(const ivec2& a) const { return ivec2(x+a.x,y+a.y); }
-	inline ivec2 operator +=(const ivec2& a) { return *this = (*this+a); }
-	inline bool operator ==(const ivec2& a) const { return x==a.x && y==a.y; }
-};
-inline ivec2 direction_to_dp(direction d) {
-	if(d == direction::across) return ivec2(1, 0);
-	else if(d == direction::down) return ivec2(0, 1);
-	else throw;
-}
-inline direction ppdl(direction d) {
-	if(d == direction::across) return direction::down;
-	else if(d == direction::down) return direction::across;
-	else throw;
-}
-inline ivec2 swap_for_direction(direction d, ivec2 i) {
-	if(d == direction::across) return i;
-	else if(d == direction::down) return ivec2(i.y, i.x);
-	else throw;
-}
-
-struct placed_word {
-	shared_ptr<placed_word> parent;
-	const ivec2 pos;
-	const string word;
-	const direction dr;
-	vector< shared_ptr<placed_word> > children;
-	placed_word(shared_ptr<placed_word> par, ivec2 p, const string& w, direction d) :
-		word(w), dr(d), pos(p), children(w.size(), nullptr), parent(par) {}
-
-	inline void debug_print(ostream& os, int lvl = 0) {
-		for(int i = 0; i < lvl; ++i) os << "\t";
-		os << word << endl;
-		for(auto c : children) {
-			if(c) c->debug_print(os,lvl+1); else {
-			//	for(int i = 0; i < lvl+1; ++i) os << "\t";
-			//   	os << "***" << endl;
-			}
-		}
-	}
-};
-
-bool verbose = false;
-
-class puzzle {
-	struct cell {
-		char c;
-		list<placed_word*> owners;
-		cell(char c = ' ', placed_word* w = nullptr) : c(c), owners{w} {}
-		inline void append_owner(placed_word* w) { owners.push_back(w); }
-	};
-	vector<vector<cell>> grid;
-	shared_ptr<placed_word> root_word;
-
-	inline void place_word_in_grid(shared_ptr<placed_word> word) {
+void puzzle::place_word_in_grid(shared_ptr<placed_word> word) {
 		ivec2 p = word->pos;
 		for(int i = 0; i < word->word.size(); ++i) {
 			if(grid[p.y][p.x].c == word->word[i])
@@ -101,7 +10,7 @@ class puzzle {
 			p += direction_to_dp(word->dr);
 		}
 	}
-	inline bool check_grid(shared_ptr<placed_word> parent, ivec2 p, direction d, const string& w) {
+	bool puzzle::check_grid(shared_ptr<placed_word> parent, ivec2 p, direction d, const string& w, bool verbose) {
 		if(verbose) cout << "checking word " << w << " for placement" << endl;
 		for(int i = 0; i < w.size(); ++i) {
 			if(p.x < 0 || p.x >= grid[0].size() || p.y < 0 || p.y >= grid.size()) return false;
@@ -121,7 +30,7 @@ class puzzle {
 		}
 		return true;
 	}
-	inline void remove_word_from_grid(shared_ptr<placed_word> w) {
+	void puzzle::remove_word_from_grid(shared_ptr<placed_word> w, bool verbose) {
 		if(verbose) cout << "removing word " << w->word << endl;
 		auto f = find(w->parent->children.begin(), w->parent->children.end(), w);
 		if(f != w->parent->children.end()) *f = nullptr;
@@ -140,7 +49,7 @@ class puzzle {
 			p += direction_to_dp(w->dr);
 		}
 	}
-	inline bool complete() {
+	bool puzzle::complete() {
 		// check that we have the proper number of words down and across
 		stack<shared_ptr<placed_word>> s;
 		s.push(root_word);
@@ -152,8 +61,7 @@ class puzzle {
 		}
 		return words_down >= 15 && words_across >= 15;
 	}
-public:
-	puzzle(const vector<string>& words) :
+	puzzle::puzzle(const vector<string>& words, bool verbose) :
 		grid(18+rand()%4, vector<cell>(18+rand()%4, cell()))
 	{
 		/**** Puzzle generation algorithm ****/
@@ -189,7 +97,7 @@ public:
 						break;
 					}
 					//Pop the last word placed off the last placed word stack and remove it, then start at the root word and attempt to place the current word to be placed
-					remove_word_from_grid(last_placed_word_stack.top());
+					remove_word_from_grid(last_placed_word_stack.top(), verbose);
 					words_to_place.push_back(last_placed_word_stack.top()->word);
 					last_placed_word_stack.pop();
 					search_stack.push(root_word);
@@ -209,7 +117,7 @@ public:
 						auto D = ppdl(current_placed_word->dr);
 						auto pos = current_placed_word->pos + swap_for_direction(current_placed_word->dr, ivec2(nxt_ltr, -chr));
 						//check the grid to see if that placement would be valid
-						if(check_grid(current_placed_word, pos, D, word)) {
+						if(check_grid(current_placed_word, pos, D, word, verbose)) {
 							//If the placement is valid:
 								//place the word in the grid and move on to the next word to be placed
 								auto wrd = make_shared<placed_word>(current_placed_word, pos, word, D);
@@ -244,14 +152,14 @@ public:
 		/*************************************/
 	}
 
-	inline void print_grid(ostream& os) const {
+	void puzzle::print_grid(ostream& os) const {
 		for(const auto& v : grid) {
 			for(auto c : v)
 				os << c.c;
 			os << endl;
 		}
 	}
-	inline void print_final(ostream& os) const {
+	void puzzle::print_final(ostream& os) const {
 		stack<shared_ptr<placed_word>> s;
 		s.push(root_word);
 		vector<shared_ptr<placed_word>> down,across;
@@ -305,7 +213,7 @@ public:
 			cout << (i+1) << ". " << across[i]->word << endl;
 		}
 	}
-	inline float fill_ratio() const {
+	float puzzle::fill_ratio() const {
 		float filled_cells = 0.f;
 		for(int y = 0; y < grid.size(); ++y)
 			for(int x = 0; x < grid[y].size(); ++x) {
@@ -315,7 +223,7 @@ public:
 	}
 
 
-	inline shared_ptr<svg::shape> generate_puzzle_svg(bool is_key = true) {
+	shared_ptr<svg::shape> puzzle::generate_puzzle_svg(bool is_key) {
 		vector<shared_ptr<svg::shape>> cells;
 		stack<shared_ptr<placed_word>> s;
 		s.push(root_word);
@@ -371,51 +279,8 @@ public:
 
 		return make_shared<svg::group>(cells);
 	}
-};
 
 ostream& operator<<(ostream& os, const puzzle& p) {
 	p.print_final(os);
 	return os;
-}
-
-
-
-
-//need some way to backtrack
-//probably need to be able to take words out of the puzzle and restart
-//need to be able to not place words so that they make gibberish words with their neghbors
-int main(int argc, char* argv[]) {
-	if(argc < 2) {
-		cout << "no arguments" << endl;
-		return -1;
-	}
-	vector<string> words;
-	{
-		vector<string> words_raw;
-		ifstream wordsf(argv[1]);
-		while(wordsf) {
-			string s; getline(wordsf, s);
-			s = trim(s);
-			if(s.empty()) continue;
-			words_raw.push_back(s);
-		}
-		random_device rd;
-		mt19937 g(rd());
-		shuffle(words_raw.begin(), words_raw.end(), g);
-		words = words_raw;
-	}
-
-	if(argc > 2 && *argv[2] == 'v') verbose = true;
-
-	puzzle p(words);
-	cout << p << endl;
-	cout << "puzzle fill ratio: " << p.fill_ratio() << endl;
-	//getchar();
-	ofstream svgo("puzzle.svg");
-	svgo << "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"3000px\" height=\"3000px\">";
-	auto pv = p.generate_puzzle_svg();
-	pv->generate_svg(svgo);
-	svgo << "</svg>";
-	svgo.flush();
-	//getchar();
 }
