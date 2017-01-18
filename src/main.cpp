@@ -1,12 +1,33 @@
+#include <cpr/cpr.h>
+#include <rapidjson/document.h>
 #include "crossword.h"
 
 int main(int argc, char* argv[]) {
-	if(argc < 2) {
-		cout << "no arguments" << endl;
-		return -1;
+
+	bool verbose = false;
+	for(int i = 0; i < argc; ++i) {
+		if(argv[i][0] == '/' && argv[i][1] == 'v') verbose = true;
 	}
+
 	vector<string> words;
-	{
+	if(argc < (verbose ? 3 : 2)) {
+		cout << "no arguments, using Wordnik API to get random words" << endl;
+		auto res = cpr::Get(
+			cpr::Url{"http://api.wordnik.com/v4/words.json/randomWords"},
+			cpr::Parameters{
+				{"api_key", "ceca0dbc0ba60ada110070e411500109a95f670a3f7837662"},
+				{"hasDictionaryDef", "true"},
+				{"minLength", "6"},
+				{"maxLength", "8"},
+				{"limit", "100"}
+			});
+		rapidjson::Document d;
+		d.Parse(res.text.c_str());
+		for(auto& w : d.GetArray())
+			words.push_back(w["word"].GetString());
+		cout << "got " << words.size() << " words" << endl;
+	}
+	else {
 		vector<string> words_raw;
 		ifstream wordsf(argv[1]);
 		while(wordsf) {
@@ -21,8 +42,6 @@ int main(int argc, char* argv[]) {
 		words = words_raw;
 	}
 
-	bool verbose = false;
-	if(argc > 2 && *argv[2] == 'v') verbose = true;
 
 	puzzle p(words, verbose);
 	cout << p << endl;

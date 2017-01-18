@@ -1,0 +1,6 @@
+[submodule "depd/cpr"]
+	path = depd/cpr
+	url = https://github.com/whoshuu/cpr.git
+[submodule "depd/rapidjson"]
+	path = depd/rapidjson
+	url = https://github.com/miloyip/rapidjson
