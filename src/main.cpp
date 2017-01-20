@@ -19,12 +19,15 @@ int main(int argc, char* argv[]) {
 				{"hasDictionaryDef", "true"},
 				{"minLength", "6"},
 				{"maxLength", "8"},
-				{"limit", "100"}
+				{"limit", "300"}
 			});
 		rapidjson::Document d;
 		d.Parse(res.text.c_str());
-		for(auto& w : d.GetArray())
-			words.push_back(w["word"].GetString());
+		for(auto& w : d.GetArray()) {
+			string ws = w["word"].GetString();
+			transform(ws.begin(), ws.end(), ws.begin(), [](char c){return tolower(c);});
+			words.push_back(ws);
+		}
 		cout << "got " << words.size() << " words" << endl;
 	}
 	else {

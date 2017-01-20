@@ -62,7 +62,7 @@ void puzzle::place_word_in_grid(shared_ptr<placed_word> word) {
 		return words_down >= 15 && words_across >= 15;
 	}
 	puzzle::puzzle(const vector<string>& words, bool verbose) :
-		grid(18+rand()%4, vector<cell>(18+rand()%4, cell()))
+		grid(20+rand()%4, vector<cell>(20+rand()%4, cell()))
 	{
 		/**** Puzzle generation algorithm ****/
 		stack<shared_ptr<placed_word>> last_placed_word_stack;
